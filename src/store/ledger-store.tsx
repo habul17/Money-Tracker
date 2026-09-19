@@ -10,13 +10,26 @@ import type { Debt, DebtId, LedgerState, Transaction, TransactionId } from '@/co
 const STORAGE_KEY = 'money-tracker:v1'
 
 function loadState(): LedgerState {
+  let raw: string | null = null
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (raw === null) return EMPTY_LEDGER
+    raw = window.localStorage.getItem(STORAGE_KEY)
+  } catch {
+    // Private mode or blocked storage. Nothing to recover.
+    return EMPTY_LEDGER
+  }
+  if (raw === null) return EMPTY_LEDGER
+
+  try {
     return parseBackup(raw)
   } catch {
-    // Private mode, cleared site data, or a corrupted blob. Start clean rather
-    // than crash on boot — the user still has their export file.
+    // Starting empty is survivable; silently destroying the ledger is not.
+    // The app persists its state on mount, so an empty start would overwrite
+    // whatever is here within milliseconds. Copy it aside first.
+    try {
+      window.localStorage.setItem(`${STORAGE_KEY}:unreadable`, raw)
+    } catch {
+      // Out of space or blocked. The original survives until the next write.
+    }
     return EMPTY_LEDGER
   }
 }
