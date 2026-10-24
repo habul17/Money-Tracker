@@ -1,3 +1,5 @@
+'use client'
+
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { parseBackup } from '@/core/backup'
@@ -68,16 +70,28 @@ interface LedgerContextValue {
 const LedgerContext = createContext<LedgerContextValue | null>(null)
 
 export function LedgerProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<LedgerState>(loadState)
+  const [state, setState] = useState<LedgerState>(EMPTY_LEDGER)
+  // The server that prerenders pages has no localStorage, so the saved ledger
+  // can only be read once the app is running in the browser. Render nothing
+  // until then: the empty placeholder would flash the first-run screen, and
+  // persisting it would overwrite the real ledger.
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
+    // eslint-disable-next-line react/set-state-in-effect -- localStorage is the external system being synced
+    setState(loadState())
+    setLoaded(true)
+  }, [])
+
+  useEffect(() => {
+    if (!loaded) return
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
     } catch {
       // Storage full or blocked. The in-memory ledger still works for this
       // session; the export button is the escape hatch.
     }
-  }, [state])
+  }, [state, loaded])
 
   const summary = useMemo(() => deriveSummary(state), [state])
 
@@ -236,6 +250,7 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
     ],
   )
 
+  if (!loaded) return null
   return <LedgerContext.Provider value={value}>{children}</LedgerContext.Provider>
 }
 

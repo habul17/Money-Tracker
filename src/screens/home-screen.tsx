@@ -1,6 +1,11 @@
+'use client'
+
 import { ChevronRight, PartyPopper } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { useTransactionDialog } from '@/components/app-shell'
 import { MoneyInput } from '@/components/money-input'
 import { TransactionRow } from '@/components/transaction-row'
 import { Button } from '@/components/ui/button'
@@ -9,23 +14,17 @@ import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { sortTransactions, todayIso } from '@/core/ledger'
 import { formatPaise, parseRupeesToPaise } from '@/core/money'
-import type { Transaction } from '@/core/types'
 import { cn } from '@/lib/utils'
 import { useLedger } from '@/store/ledger-store'
 
-interface HomeScreenProps {
-  onGoToDebts: () => void
-  onGoToLog: () => void
-  onEditTransaction: (transaction: Transaction) => void
-}
-
-export function HomeScreen({ onGoToDebts, onGoToLog, onEditTransaction }: HomeScreenProps) {
+export function HomeScreen() {
   const { state, summary } = useLedger()
+  const { openEdit } = useTransactionDialog()
   const debtNames = new Map(state.debts.map((debt) => [debt.id, debt.name]))
   const recent = sortTransactions(state.transactions).slice(0, 5)
 
   if (state.transactions.length === 0 && state.debts.length === 0) {
-    return <FirstRun onGoToDebts={onGoToDebts} />
+    return <FirstRun />
   }
 
   const isClear = summary.shortfall <= 0
@@ -97,11 +96,7 @@ export function HomeScreen({ onGoToDebts, onGoToLog, onEditTransaction }: HomeSc
       {summary.payNext !== null ? (
         <Card>
           <CardContent>
-            <button
-              type="button"
-              onClick={onGoToDebts}
-              className="flex w-full items-center gap-3 text-left"
-            >
+            <Link href="/debts" className="flex w-full items-center gap-3 text-left">
               <span className="min-w-0 flex-1 space-y-2">
                 <span className="text-muted-foreground block text-xs font-semibold tracking-wide uppercase">
                   Pay next
@@ -116,7 +111,7 @@ export function HomeScreen({ onGoToDebts, onGoToLog, onEditTransaction }: HomeSc
                 </span>
               </span>
               <ChevronRight className="text-muted-foreground size-5 shrink-0" aria-hidden />
-            </button>
+            </Link>
           </CardContent>
         </Card>
       ) : (
@@ -138,8 +133,8 @@ export function HomeScreen({ onGoToDebts, onGoToLog, onEditTransaction }: HomeSc
             <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
               Recent
             </h2>
-            <Button variant="ghost" size="sm" onClick={onGoToLog} className="h-7 text-xs">
-              See all
+            <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
+              <Link href="/log">See all</Link>
             </Button>
           </div>
           <div className="divide-border divide-y">
@@ -152,7 +147,7 @@ export function HomeScreen({ onGoToDebts, onGoToLog, onEditTransaction }: HomeSc
                     ? debtNames.get(transaction.debtId)
                     : undefined
                 }
-                onClick={() => onEditTransaction(transaction)}
+                onClick={() => openEdit(transaction)}
               />
             ))}
           </div>
@@ -166,8 +161,9 @@ export function HomeScreen({ onGoToDebts, onGoToLog, onEditTransaction }: HomeSc
  * The very first screen. Two things are needed before any number means anything:
  * what you have, and what you owe.
  */
-function FirstRun({ onGoToDebts }: { onGoToDebts: () => void }) {
+function FirstRun() {
   const { addTransaction } = useLedger()
+  const router = useRouter()
   const [pot, setPot] = useState('')
 
   function handleSave() {
@@ -183,7 +179,7 @@ function FirstRun({ onGoToDebts }: { onGoToDebts: () => void }) {
       note: 'Starting pot',
     })
     toast.success('Saved. Now add what you owe.')
-    onGoToDebts()
+    router.push('/debts')
   }
 
   return (

@@ -1,4 +1,7 @@
+'use client'
+
 import { useMemo, useState } from 'react'
+import { useTransactionDialog } from '@/components/app-shell'
 import { TransactionRow } from '@/components/transaction-row'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -22,12 +25,9 @@ function formatDateHeading(iso: string): string {
   return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-export function LogScreen({
-  onEditTransaction,
-}: {
-  onEditTransaction: (transaction: Transaction) => void
-}) {
+export function LogScreen() {
   const { state } = useLedger()
+  const { openEdit } = useTransactionDialog()
   const [filter, setFilter] = useState<Filter>('all')
 
   const debtNames = useMemo(
@@ -90,7 +90,7 @@ export function LogScreen({
                         ? debtNames.get(transaction.debtId)
                         : undefined
                     }
-                    onClick={() => onEditTransaction(transaction)}
+                    onClick={() => openEdit(transaction)}
                   />
                 ))}
               </div>

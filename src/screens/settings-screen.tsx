@@ -1,3 +1,5 @@
+'use client'
+
 import { Download, TriangleAlert, Upload } from 'lucide-react'
 import { useRef } from 'react'
 import { toast } from 'sonner'

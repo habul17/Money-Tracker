@@ -63,14 +63,21 @@ Everything lives in `localStorage` on the device. There is no server and no acco
 - Settings → Export writes the whole ledger to a JSON file. Keep it somewhere that is not the phone.
 - Phone and desktop do not sync. The phone is the source of truth.
 
+Next.js prerenders every page as an empty shell. The ledger is read from `localStorage` only once
+the app is running in the browser, so it never reaches a server.
+
 ## Running it
 
 ```bash
 bun install
 bun dev            # http://localhost:5173
-bun run build      # static output in dist/
+bun run build      # production build in .next/
+bun start          # serve that build on http://localhost:5173
 bun run lint
 ```
+
+The port is pinned on purpose: `localStorage` belongs to one origin, so the same app on another
+port would open with an empty ledger. If 5173 is taken, the command fails rather than moving.
 
 On your phone: open the dev or deployed URL, then **Add to Home Screen**. It installs as a
 standalone app via `public/manifest.webmanifest`.
@@ -79,6 +86,7 @@ standalone app via `public/manifest.webmanifest`.
 
 ```
 src/
+  app/             Next.js routes: / (home), /debts, /log, /settings, and the root layout
   core/            framework-free domain logic — no React, moves to React Native untouched
     money.ts       integer paise, ₹ lakh-grouped formatting, parsing
     types.ts       Debt, Transaction, LedgerState
@@ -87,7 +95,7 @@ src/
   store/
     ledger-store.tsx   React context, actions, localStorage persistence
   screens/         home, debts, log, settings
-  components/      dialogs, shared rows, shadcn/ui primitives
+  components/      app shell (bottom nav, add dialog), dialogs, shared rows, shadcn/ui primitives
 ```
 
 **All amounts are integer paise, never floats.** `0.1 + 0.2 !== 0.3` in JavaScript, and in a money
@@ -95,7 +103,7 @@ app that error compounds through every derived number until the totals are visib
 
 ## Stack
 
-React 19 · TypeScript · Vite · Tailwind v4 · shadcn/ui · dnd-kit · bun
+React 19 · TypeScript · Next.js 16 (App Router) · Tailwind v4 · shadcn/ui · dnd-kit · bun
 
 ## Deliberately not here
 
