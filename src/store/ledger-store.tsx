@@ -37,7 +37,12 @@ function loadState(): LedgerState {
 }
 
 function newId(): string {
-  return crypto.randomUUID()
+  // randomUUID only exists on HTTPS or localhost. A phone opening the dev server over
+  // Wi-Fi (plain http://192.168.x.x) gets random hex instead; ids are opaque either way.
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('')
 }
 
 export interface NewTransactionInput {
