@@ -55,16 +55,19 @@ rearrange it; the order reflects real-world obligation, not arithmetic.
 - A debt with payments recorded against it can be archived but **never deleted** — deleting it would
   silently rewrite your cash history.
 
-## Storage and backup
+## Accounts and storage
 
-Everything lives in `localStorage` on the device. There is no server and no account, so:
+You log in with an email and password (Better Auth). Each account has exactly one ledger, stored in
+Postgres (Neon) as a single JSON document in the `ledger` table, keyed by user id. The same login
+shows the same ledger on every device.
 
-- **Clearing browser data, reinstalling the browser or replacing the phone erases everything.**
-- Settings → Export writes the whole ledger to a JSON file. Keep it somewhere that is not the phone.
-- Phone and desktop do not sync. The phone is the source of truth.
-
-Next.js prerenders every page as an empty shell. The ledger is read from `localStorage` only once
-the app is running in the browser, so it never reaches a server.
+- The server reads the ledger before sending a page, so the app opens with your data already there.
+- Every change is saved about half a second after you stop editing. The user id comes from the
+  session cookie, never from the browser, so an account can only read and write its own ledger.
+- Each save names the version it started from. If another tab or device saved first, the save is
+  refused and the newer ledger replaces what is on screen, rather than one silently overwriting
+  the other.
+- Settings → Export still writes the whole ledger to a JSON file, and Restore reads one back.
 
 The light/dark choice in Settings → Appearance is a per-device preference. It is stored under its
 own key (`money-tracker:theme`), so backups don't include it.
@@ -73,14 +76,23 @@ own key (`money-tracker:theme`), so backups don't include it.
 
 ```bash
 bun install
+bun run db:migrate # create or update the tables in Neon (safe to re-run)
 bun dev            # http://localhost:5173
 bun run build      # production build in .next/
 bun start          # serve that build on http://localhost:5173
 bun run lint
 ```
 
-The port is pinned on purpose: `localStorage` belongs to one origin, so the same app on another
-port would open with an empty ledger. If 5173 is taken, the command fails rather than moving.
+It needs a `.env.local` (git-ignored) with:
+
+```bash
+DATABASE_URL="postgresql://…"     # Neon → Connect, pooled, with sslmode=verify-full
+BETTER_AUTH_SECRET="…"            # openssl rand -base64 32
+BETTER_AUTH_URL="http://localhost:5173"
+```
+
+The port is pinned because `BETTER_AUTH_URL` names it. If 5173 is taken, the command fails rather
+than moving.
 
 On your phone: open the dev or deployed URL, then **Add to Home Screen**. It installs as a
 standalone app via `public/manifest.webmanifest`.
@@ -89,14 +101,24 @@ standalone app via `public/manifest.webmanifest`.
 
 ```
 src/
-  app/             Next.js routes: / (home), /debts, /log, /settings, and the root layout
+  app/
+    (app)/         the four tabs; its layout checks the session and loads the ledger
+    (auth)/        /login and /signup
+    api/auth/      Better Auth's endpoints
   core/            framework-free domain logic — no React, moves to React Native untouched
     money.ts       integer paise, ₹ lakh-grouped formatting, parsing
     types.ts       Debt, Transaction, LedgerState
     ledger.ts      every derivation: cash, balances, shortfall, progress, priority
     backup.ts      export / import with validation
   store/
-    ledger-store.tsx   React context, actions, localStorage persistence
+    ledger-store.tsx   React context, actions, saving to the server
+  server/          runs only on the server
+    db.ts          the Postgres pool
+    auth.ts        Better Auth config and getSession()
+    ledger.ts      load and save one account's ledger
+    ledger-actions.ts  the save action the browser calls
+db/ledger.sql      the ledger table (auth tables come from Better Auth)
+scripts/migrate.ts creates both
   screens/         home, debts, log, settings
   components/      app shell (bottom nav, add dialog), dialogs, shared rows, shadcn/ui primitives
 ```
@@ -106,9 +128,10 @@ app that error compounds through every derived number until the totals are visib
 
 ## Stack
 
-React 19 · TypeScript · Next.js 16 (App Router) · Tailwind v4 · shadcn/ui · dnd-kit · bun
+React 19 · TypeScript · Next.js 16 (App Router) · Tailwind v4 · shadcn/ui · dnd-kit · Better Auth ·
+Postgres (Neon) · bun
 
 ## Deliberately not here
 
 Interest rates · due dates · reminders · payoff projections · snowball/avalanche sorting ·
-spending categories · multi-currency · device sync · automatic backup.
+spending categories · multi-currency · automatic backup.

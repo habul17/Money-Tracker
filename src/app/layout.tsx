@@ -1,9 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
-import { AppShell } from '@/components/app-shell'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
-import { LedgerProvider } from '@/store/ledger-store'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -40,10 +38,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body>
         <ThemeProvider>
-          <LedgerProvider>
-            <AppShell>{children}</AppShell>
-            <Toaster position="top-center" />
-          </LedgerProvider>
+          {children}
+          <Toaster position="top-center" />
         </ThemeProvider>
       </body>
     </html>

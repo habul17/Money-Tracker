@@ -1,6 +1,7 @@
 'use client'
 
-import { Download, Monitor, Moon, Sun, TriangleAlert, Upload } from 'lucide-react'
+import { Download, LogOut, Monitor, Moon, Sun, Upload } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { useRef } from 'react'
 import { toast } from 'sonner'
@@ -19,11 +20,14 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { backupFilename, serialiseBackup } from '@/core/backup'
+import { authClient } from '@/lib/auth-client'
 import { useLedger } from '@/store/ledger-store'
 
 export function SettingsScreen() {
   const { state, summary, importBackup, resetEverything } = useLedger()
   const { theme, setTheme } = useTheme()
+  const router = useRouter()
+  const { data: session } = authClient.useSession()
   const fileInput = useRef<HTMLInputElement>(null)
 
   function handleExport() {
@@ -34,7 +38,13 @@ export function SettingsScreen() {
     anchor.download = backupFilename()
     anchor.click()
     URL.revokeObjectURL(url)
-    toast.success('Backup saved. Put it somewhere that is not this phone.')
+    toast.success('Backup saved.')
+  }
+
+  async function handleSignOut() {
+    await authClient.signOut()
+    router.replace('/login')
+    router.refresh()
   }
 
   async function handleImportFile(file: File) {
@@ -54,16 +64,19 @@ export function SettingsScreen() {
         <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
       </div>
 
-      <Card className="border-amber-600/30 bg-amber-600/5">
-        <CardContent className="flex gap-3">
-          <TriangleAlert className="size-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
-          <div className="space-y-1 text-sm">
-            <p className="font-medium">Your data lives only on this device.</p>
-            <p className="text-muted-foreground">
-              Clearing your browser data, reinstalling it, or replacing this phone will erase
-              everything. Export regularly and keep the file somewhere else.
-            </p>
-          </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Account</CardTitle>
+          <CardDescription>
+            {session?.user.email ?? '…'}. Everything is saved to this account, so it is the
+            same on every device you log in on.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={handleSignOut} variant="outline" className="w-full justify-start">
+            <LogOut className="size-4" />
+            Log out
+          </Button>
         </CardContent>
       </Card>
 
@@ -152,7 +165,7 @@ export function SettingsScreen() {
         <CardHeader>
           <CardTitle className="text-base">Start over</CardTitle>
           <CardDescription>
-            Deletes every debt and entry on this device. There is no undo.
+            Deletes every debt and entry in this account. There is no undo.
           </CardDescription>
         </CardHeader>
         <CardContent>

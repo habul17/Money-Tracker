@@ -62,6 +62,11 @@ export function parseBackup(raw: string): LedgerState {
   } catch {
     throw new Error("That file isn't valid JSON.")
   }
+  return parseLedger(data)
+}
+
+/** The same checks as a backup file, for a ledger that arrives already parsed (a save request). */
+export function parseLedger(data: unknown): LedgerState {
   if (!isRecord(data)) throw new Error("That file doesn't look like a Money Tracker backup.")
   if (data.version !== 1) throw new Error(`Unsupported backup version: ${String(data.version)}`)
   if (!Array.isArray(data.debts) || !Array.isArray(data.transactions)) {

@@ -2,37 +2,29 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import { toast } from 'sonner'
 import { parseBackup } from '@/core/backup'
 import { deriveRemaining, deriveSummary, hasHistory, todayIso } from '@/core/ledger'
 import type { LedgerSummary } from '@/core/ledger'
 import type { Paise } from '@/core/money'
 import { EMPTY_LEDGER } from '@/core/types'
 import type { Debt, DebtId, LedgerState, Transaction, TransactionId } from '@/core/types'
+import type { StoredLedger } from '@/server/ledger'
+import { saveMyLedger } from '@/server/ledger-actions'
 
-const STORAGE_KEY = 'money-tracker:v1'
+/** Waits for a burst of edits (dragging a debt, typing a fix) to settle before saving. */
+const SAVE_DELAY_MS = 600
+const RETRY_DELAY_MS = 5000
 
-function loadState(): LedgerState {
-  let raw: string | null = null
+// Where the ledger lived before accounts existed. Starting fresh was the choice
+// when moving to the database, so whatever is left there is cleared once.
+const OLD_STORAGE_KEYS = ['money-tracker:v1', 'money-tracker:v1:unreadable']
+
+function clearOldDeviceStorage() {
   try {
-    raw = window.localStorage.getItem(STORAGE_KEY)
+    for (const key of OLD_STORAGE_KEYS) window.localStorage.removeItem(key)
   } catch {
-    // Private mode or blocked storage. Nothing to recover.
-    return EMPTY_LEDGER
-  }
-  if (raw === null) return EMPTY_LEDGER
-
-  try {
-    return parseBackup(raw)
-  } catch {
-    // Starting empty is survivable; silently destroying the ledger is not.
-    // The app persists its state on mount, so an empty start would overwrite
-    // whatever is here within milliseconds. Copy it aside first.
-    try {
-      window.localStorage.setItem(`${STORAGE_KEY}:unreadable`, raw)
-    } catch {
-      // Out of space or blocked. The original survives until the next write.
-    }
-    return EMPTY_LEDGER
+    // Blocked storage has nothing in it to clear.
   }
 }
 
@@ -43,6 +35,59 @@ function newId(): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
     byte.toString(16).padStart(2, '0'),
   ).join('')
+}
+
+/**
+ * Keeps the database in step with the ledger on screen. One save runs at a time and
+ * names the version it started from. If another tab or device saved in between, the
+ * server refuses and hands back its ledger, which replaces what is on screen.
+ */
+function createSaver(initial: StoredLedger, replaceState: (state: LedgerState) => void) {
+  let latest = initial.state
+  /** What the server holds at `version`. */
+  let saved = initial.state
+  let version = initial.version
+  let inFlight = false
+  let timer: ReturnType<typeof setTimeout> | undefined
+
+  function schedule(delay: number) {
+    clearTimeout(timer)
+    timer = setTimeout(() => void flush(), delay)
+  }
+
+  async function flush() {
+    // A change made mid-save is picked up by the check at the bottom.
+    if (inFlight || latest === saved) return
+    const sending = latest
+    inFlight = true
+    let failed = false
+    try {
+      const result = await saveMyLedger(sending, version)
+      if (result.ok) {
+        saved = sending
+        version = result.version
+      } else {
+        saved = latest = result.latest.state
+        version = result.latest.version
+        replaceState(result.latest.state)
+        toast.info('This was changed on another device. Showing the latest.')
+      }
+    } catch {
+      failed = true
+      toast.error("Couldn't save. Trying again in a few seconds.", { id: 'save-failed' })
+    } finally {
+      inFlight = false
+    }
+    if (latest !== saved) schedule(failed ? RETRY_DELAY_MS : SAVE_DELAY_MS)
+  }
+
+  return {
+    update(next: LedgerState) {
+      latest = next
+      if (latest !== saved) schedule(SAVE_DELAY_MS)
+    },
+    hasUnsaved: () => latest !== saved,
+  }
 }
 
 export interface NewTransactionInput {
@@ -74,29 +119,31 @@ interface LedgerContextValue {
 
 const LedgerContext = createContext<LedgerContextValue | null>(null)
 
-export function LedgerProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<LedgerState>(EMPTY_LEDGER)
-  // The server that prerenders pages has no localStorage, so the saved ledger
-  // can only be read once the app is running in the browser. Render nothing
-  // until then: the empty placeholder would flash the first-run screen, and
-  // persisting it would overwrite the real ledger.
-  const [loaded, setLoaded] = useState(false)
+export function LedgerProvider({
+  initial,
+  children,
+}: {
+  /** Read from the database by the server before the page is sent. */
+  initial: StoredLedger
+  children: ReactNode
+}) {
+  const [state, setState] = useState<LedgerState>(initial.state)
+  const [saver] = useState(() => createSaver(initial, setState))
 
   useEffect(() => {
-    // eslint-disable-next-line react/set-state-in-effect -- localStorage is the external system being synced
-    setState(loadState())
-    setLoaded(true)
-  }, [])
+    saver.update(state)
+  }, [saver, state])
 
   useEffect(() => {
-    if (!loaded) return
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-    } catch {
-      // Storage full or blocked. The in-memory ledger still works for this
-      // session; the export button is the escape hatch.
+    // Closing the tab mid-save would drop the last change, so ask first.
+    function warnIfUnsaved(event: BeforeUnloadEvent) {
+      if (saver.hasUnsaved()) event.preventDefault()
     }
-  }, [state, loaded])
+    window.addEventListener('beforeunload', warnIfUnsaved)
+    return () => window.removeEventListener('beforeunload', warnIfUnsaved)
+  }, [saver])
+
+  useEffect(clearOldDeviceStorage, [])
 
   const summary = useMemo(() => deriveSummary(state), [state])
 
@@ -255,7 +302,6 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
     ],
   )
 
-  if (!loaded) return null
   return <LedgerContext.Provider value={value}>{children}</LedgerContext.Provider>
 }
 
