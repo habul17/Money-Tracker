@@ -1,6 +1,7 @@
 'use client'
 
-import { Download, TriangleAlert, Upload } from 'lucide-react'
+import { Download, Monitor, Moon, Sun, TriangleAlert, Upload } from 'lucide-react'
+import { useTheme } from 'next-themes'
 import { useRef } from 'react'
 import { toast } from 'sonner'
 import {
@@ -16,11 +17,13 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { backupFilename, serialiseBackup } from '@/core/backup'
 import { useLedger } from '@/store/ledger-store'
 
 export function SettingsScreen() {
   const { state, summary, importBackup, resetEverything } = useLedger()
+  const { theme, setTheme } = useTheme()
   const fileInput = useRef<HTMLInputElement>(null)
 
   function handleExport() {
@@ -97,6 +100,31 @@ export function SettingsScreen() {
           <p className="text-muted-foreground text-xs">
             Restoring replaces everything currently in the app.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Appearance</CardTitle>
+          <CardDescription>System matches your phone or computer.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={theme ?? 'system'} onValueChange={setTheme}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="system">
+                <Monitor aria-hidden />
+                System
+              </TabsTrigger>
+              <TabsTrigger value="light">
+                <Sun aria-hidden />
+                Light
+              </TabsTrigger>
+              <TabsTrigger value="dark">
+                <Moon aria-hidden />
+                Dark
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </CardContent>
       </Card>
 

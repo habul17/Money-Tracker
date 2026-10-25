@@ -66,6 +66,9 @@ Everything lives in `localStorage` on the device. There is no server and no acco
 Next.js prerenders every page as an empty shell. The ledger is read from `localStorage` only once
 the app is running in the browser, so it never reaches a server.
 
+The light/dark choice in Settings → Appearance is a per-device preference. It is stored under its
+own key (`money-tracker:theme`), so backups don't include it.
+
 ## Running it
 
 ```bash

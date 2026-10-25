@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
 import { AppShell } from '@/components/app-shell'
+import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { LedgerProvider } from '@/store/ledger-store'
 import './globals.css'
@@ -23,20 +24,27 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-  ],
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    // The theme script adds the dark class to <html> before React loads, which React
+    // would otherwise report as a mismatch with the server's HTML.
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Browser bar colours for each device setting. They sit here rather than in
+            `viewport` because Next rewrites those tags on every page change, which would
+            undo ThemeProvider pointing them at a manual Light or Dark choice. */}
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0a0a" />
+      </head>
       <body>
-        <LedgerProvider>
-          <AppShell>{children}</AppShell>
-          <Toaster position="top-center" />
-        </LedgerProvider>
+        <ThemeProvider>
+          <LedgerProvider>
+            <AppShell>{children}</AppShell>
+            <Toaster position="top-center" />
+          </LedgerProvider>
+        </ThemeProvider>
       </body>
     </html>
   )
