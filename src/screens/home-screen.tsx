@@ -137,20 +137,21 @@ export function HomeScreen() {
               <Link href="/log">See all</Link>
             </Button>
           </div>
-          <div className="divide-border divide-y">
+          <ul className="divide-border divide-y">
             {recent.map((transaction) => (
-              <TransactionRow
-                key={transaction.id}
-                transaction={transaction}
-                debtName={
-                  transaction.kind === 'payment' || transaction.kind === 'adjustment'
-                    ? debtNames.get(transaction.debtId)
-                    : undefined
-                }
-                onClick={() => openEdit(transaction)}
-              />
+              <li key={transaction.id}>
+                <TransactionRow
+                  transaction={transaction}
+                  debtName={
+                    transaction.kind === 'payment' || transaction.kind === 'adjustment'
+                      ? debtNames.get(transaction.debtId)
+                      : undefined
+                  }
+                  onClick={() => openEdit(transaction)}
+                />
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
       )}
     </div>

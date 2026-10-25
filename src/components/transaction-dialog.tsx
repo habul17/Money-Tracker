@@ -186,7 +186,7 @@ function TransactionForm({
                 <SelectTrigger id="debt" className="w-full">
                   <SelectValue placeholder="Choose a debt" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper">
                   {payable.map((view, index) => (
                     <SelectItem key={view.debt.id} value={view.debt.id}>
                       {index + 1}. {view.debt.name} — {formatPaise(view.remaining)} left

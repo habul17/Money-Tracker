@@ -133,7 +133,7 @@ function DebtForm({ editing, onDone }: { editing: DebtView | null; onDone: () =>
       </div>
 
       <DialogFooter className="gap-2 sm:justify-between">
-        <div className="flex gap-1">
+        <div className="flex justify-center gap-1 sm:justify-start">
           {isEditing && isArchived && (
             <Button
               type="button"

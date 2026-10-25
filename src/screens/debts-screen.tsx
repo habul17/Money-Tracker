@@ -203,7 +203,7 @@ function SortableDebtRow({
         {/* Listeners live on the handle only, so the list still scrolls normally. */}
         <button
           type="button"
-          className="text-muted-foreground hover:text-foreground flex h-full shrink-0 cursor-grab touch-none items-center self-stretch px-2 active:cursor-grabbing"
+          className="text-muted-foreground hover:text-foreground flex shrink-0 cursor-grab touch-none items-center self-stretch px-2 active:cursor-grabbing"
           aria-label={`Reorder ${view.debt.name}`}
           {...attributes}
           {...listeners}

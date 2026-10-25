@@ -45,8 +45,12 @@ export function TransactionRow({ transaction, debtName, onClick }: TransactionRo
       onClick={onClick}
       disabled={onClick === undefined}
       className={cn(
-        'flex w-full items-center gap-3 py-3 text-left transition-colors',
-        onClick !== undefined && 'hover:bg-muted/60 -mx-2 rounded-lg px-2',
+        'flex items-center gap-3 py-3 text-left transition-colors',
+        // Clickable rows reach 0.5rem past the list on each side, so the hover highlight
+        // has room around the content while the content stays in line with the page.
+        onClick !== undefined
+          ? 'hover:bg-muted/60 -mx-2 w-[calc(100%+1rem)] rounded-lg px-2'
+          : 'w-full',
       )}
     >
       <span className="bg-muted flex size-9 shrink-0 items-center justify-center rounded-full">

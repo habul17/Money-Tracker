@@ -80,20 +80,21 @@ export function LogScreen() {
               <h2 className="text-muted-foreground mb-1 text-xs font-semibold tracking-wide uppercase">
                 {formatDateHeading(date)}
               </h2>
-              <div className="divide-border divide-y">
+              <ul className="divide-border divide-y">
                 {transactions.map((transaction) => (
-                  <TransactionRow
-                    key={transaction.id}
-                    transaction={transaction}
-                    debtName={
-                      transaction.kind === 'payment' || transaction.kind === 'adjustment'
-                        ? debtNames.get(transaction.debtId)
-                        : undefined
-                    }
-                    onClick={() => openEdit(transaction)}
-                  />
+                  <li key={transaction.id}>
+                    <TransactionRow
+                      transaction={transaction}
+                      debtName={
+                        transaction.kind === 'payment' || transaction.kind === 'adjustment'
+                          ? debtNames.get(transaction.debtId)
+                          : undefined
+                      }
+                      onClick={() => openEdit(transaction)}
+                    />
+                  </li>
                 ))}
-              </div>
+              </ul>
             </section>
           ))}
         </div>
